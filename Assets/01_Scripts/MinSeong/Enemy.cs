@@ -1,9 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditorInternal;
 using UnityEngine;
 
-public class Player : MonoBehaviour
+public class Enemy : MonoBehaviour
 {
     [SerializeField] Transform attackTransform;
     [SerializeField] Vector2 boxSize;
@@ -14,52 +13,40 @@ public class Player : MonoBehaviour
     public int damage;
     public float attackCoolTime;
 
-
+    Rigidbody2D rb;
 
     bool isGround;
 
-    Rigidbody2D rb;
+    float time = 0;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
     }
-
     void Update()
     {
-        Move();
-        Jump();
         Attack();
-
     }
-
-    float time = 0;
 
     private void Attack()
     {
         if (time <= 0)
         {
-            if (Input.GetMouseButtonDown(0))
+
+            Collider2D[] collider2Ds = Physics2D.OverlapBoxAll(attackTransform.position, boxSize, 0);
+            foreach (Collider2D collider in collider2Ds)
             {
-                Collider2D[] collider2Ds = Physics2D.OverlapBoxAll(attackTransform.position, boxSize, 0);
-                foreach (Collider2D collider in collider2Ds)
+                Debug.Log(collider.tag);
+                if (collider.tag == "Player")
                 {
-                    Debug.Log(collider.tag);
-                    if(collider.tag == "Enemy")
-                    {
-                        collider.GetComponent<Enemy>().TakeDamage(damage);
-                    }
+                    collider.GetComponent<Player>().TakeDamage(damage);
                 }
-                time = attackCoolTime;
             }
+            time = attackCoolTime;
+
         }
         else
             time -= Time.deltaTime;
-    }
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireCube(attackTransform.position, boxSize);
     }
 
     private void Jump()
@@ -76,11 +63,11 @@ public class Player : MonoBehaviour
         float x = Input.GetAxisRaw("Horizontal");
         transform.position += new Vector3(x * moveSpeed * Time.deltaTime, 0, 0);
 
-        if(x > 0)
+        if (x > 0)
         {
             transform.rotation = Quaternion.Euler(0, 0, 0);
         }
-        else if(x < 0)
+        else if (x < 0)
         {
             transform.rotation = Quaternion.Euler(0, 180, 0);
         }
@@ -89,16 +76,13 @@ public class Player : MonoBehaviour
     public void TakeDamage(int damage)
     {
         hp -= damage;
-        if(hp <= 0)
-        {
+        if (hp <= 0)
             Die();
-        }
     }
 
     void Die()
     {
-
-        Debug.Log("PlayerDie");
+        Debug.Log("Died"); Destroy(gameObject);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -107,5 +91,11 @@ public class Player : MonoBehaviour
         {
             isGround = true;
         }
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireCube(attackTransform.position, boxSize);
     }
 }

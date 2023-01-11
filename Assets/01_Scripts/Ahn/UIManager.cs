@@ -6,6 +6,8 @@ using UnityEngine.SceneManagement;
 public class UIManager : MonoBehaviour
 {
     [SerializeField] string _sceneName;
+    [SerializeField] GameObject SettingUICanvas;
+    [SerializeField] GameObject SettingButton;
     // Start is called before the first frame update
     void Start()
     {
@@ -19,8 +21,9 @@ public class UIManager : MonoBehaviour
     {
         Application.Quit();
     }
-    public void Setting()
+    public void Setting_Exit()
     {
-
+        SettingUICanvas.SetActive(false);
+        SettingButton.SetActive(true);
     }
 }

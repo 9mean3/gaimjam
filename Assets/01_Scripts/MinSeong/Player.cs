@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEditorInternal;
 using UnityEngine;
 
@@ -7,15 +8,32 @@ public class Player : MonoBehaviour
 {
     [SerializeField] Transform attackTransform;
     [SerializeField] Vector2 boxSize;
+    [SerializeField] Transform dashStopTransform;
+    [SerializeField] Vector2 dashStopBoxSize;
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireCube(attackTransform.position, boxSize);
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireCube(dashStopTransform.position, dashStopBoxSize);
+    }
 
     public int hp;
-    public float moveSpeed;
-    public float jumpPower;
+
     public int damage;
     public float attackCoolTime;
 
+    public bool canDash = true;
+    public bool isDashing;
+    public bool isAttacking;
+    public bool canDefend;
+    public bool isDefending;
+    public float dashingPower;
+    public float dashingTime;
+    public float dashingCooldown;
 
-
+    bool shouldDash;
     bool isGround;
 
     Rigidbody2D rb;
@@ -26,11 +44,45 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        Move();
-        Jump();
+        Collider2D[] collider2Dstop = Physics2D.OverlapBoxAll(dashStopTransform.position, dashStopBoxSize, 0);
+        foreach (Collider2D collider in collider2Dstop)
+        {
+            if (collider.tag == "Enemy")
+            {
+                shouldDash = false;
+            }
+            else
+            {
+                shouldDash = true;
+            }
+        }
+
+        LookAt();
         Attack();
 
+        if (canDefend)
+        {
+            if (Input.GetMouseButtonDown(2))
+            {
+                //StartCoroutine(Defend());
+            }
+            else if (Input.GetMouseButtonUp(2))
+            {
+                //StopCoroutine(Defend());
+            }
+        }
+
+
+        if (shouldDash && isDashing)
+        {
+            transform.position += new Vector3(transform.localScale.x * dashingPower * Time.deltaTime, 0);
+        }
     }
+
+    //IEnumerator Defend()
+    //{
+        
+    //}
 
     float time = 0;
 
@@ -38,58 +90,77 @@ public class Player : MonoBehaviour
     {
         if (time <= 0)
         {
+            Debug.Log("readyforattack;");
             if (Input.GetMouseButtonDown(0))
             {
-                Collider2D[] collider2Ds = Physics2D.OverlapBoxAll(attackTransform.position, boxSize, 0);
-                foreach (Collider2D collider in collider2Ds)
+                Debug.Log("공격");
+                if (!shouldDash)
                 {
-                    Debug.Log(collider.tag);
-                    if(collider.tag == "Enemy")
-                    {
-                        collider.GetComponent<Enemy>().TakeDamage(damage);
-                    }
+                    DefAttack();
                 }
+                else
+                {
+                    StartCoroutine(DashAttack());
+                }
+
+
                 time = attackCoolTime;
             }
         }
         else
             time -= Time.deltaTime;
-    }
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireCube(attackTransform.position, boxSize);
     }
-
-    private void Jump()
+    void DefAttack()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGround)
+        Collider2D[] collider2Ds = Physics2D.OverlapBoxAll(attackTransform.position, boxSize, 0);
+        foreach (Collider2D collider in collider2Ds)
         {
-            isGround = false;
-            rb.velocity = Vector2.up * jumpPower;
+            if (collider.tag == "Enemy")
+            {
+                collider.GetComponent<Enemy>().TakeDamage(damage);
+            }
+        }
+        //target에게 대미지
+        Debug.Log("rmswjq");
+    }
+
+    IEnumerator DashAttack()
+    {
+        isDashing = true;
+        yield return new WaitForSeconds(dashingTime);
+        Debug.Log("dd");
+        isDashing = false;
+
+    }
+    private void LookAt()
+    {
+        GameObject[] en = GameObject.FindGameObjectsWithTag("Enemy");
+        for (int i = 0; i < en.Length; i++)
+        {
+            if (transform.position.x > en[i].transform.position.x)
+            {
+                transform.localScale = new Vector3(-1, 1, 1);
+            }
+            else if (transform.position.x < en[i].transform.position.x)
+            {
+                transform.localScale = new Vector3(1, 1, 1);
+            }
         }
     }
 
-    private void Move()
-    {
-        float x = Input.GetAxisRaw("Horizontal");
-        transform.position += new Vector3(x * moveSpeed * Time.deltaTime, 0, 0);
 
-        if(x > 0)
-        {
-            transform.rotation = Quaternion.Euler(0, 0, 0);
-        }
-        else if(x < 0)
-        {
-            transform.rotation = Quaternion.Euler(0, 180, 0);
-        }
-    }
+
+
+
+
+
+
 
     public void TakeDamage(int damage)
     {
         hp -= damage;
-        if(hp <= 0)
+        if (hp <= 0)
         {
             Die();
         }
@@ -103,9 +174,6 @@ public class Player : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Ground"))
-        {
-            isGround = true;
-        }
+
     }
 }

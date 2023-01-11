@@ -33,6 +33,12 @@ public class Player : MonoBehaviour
     public float dashingTime;
     public float dashingCooldown;
 
+    public string[] attacknames;
+
+     Animator ani;
+
+    int attackIndex = 0;
+
     bool shouldDash;
     bool isGround;
 
@@ -40,6 +46,8 @@ public class Player : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        ani = GetComponent<Animator>();
+        attackIndex = 0;
     }
 
     void Update()
@@ -62,12 +70,14 @@ public class Player : MonoBehaviour
 
         if (canDefend)
         {
-            if (Input.GetMouseButtonDown(2))
+            if (Input.GetMouseButtonDown(1))
             {
+                ani.SetBool("BlockIdle", true);
                 //StartCoroutine(Defend());
             }
-            else if (Input.GetMouseButtonUp(2))
+            else if (Input.GetMouseButtonUp(1))
             {
+                ani.SetBool("BlockIdle", false);
                 //StopCoroutine(Defend());
             }
         }
@@ -97,14 +107,23 @@ public class Player : MonoBehaviour
                 if (!shouldDash)
                 {
                     DefAttack();
+
+                    ani.SetTrigger(attacknames[attackIndex]);
                 }
                 else
                 {
                     StartCoroutine(DashAttack());
                 }
 
-
                 time = attackCoolTime;
+                if (attackIndex >= 2)
+                {
+                    attackIndex = 0;
+                }
+                else
+                {
+                    attackIndex++;
+                }
             }
         }
         else
@@ -160,6 +179,7 @@ public class Player : MonoBehaviour
     public void TakeDamage(int damage)
     {
         hp -= damage;
+        ani.SetTrigger("Hurt");
         if (hp <= 0)
         {
             Die();
@@ -168,7 +188,7 @@ public class Player : MonoBehaviour
 
     void Die()
     {
-
+        ani.SetTrigger("Death");
         Debug.Log("PlayerDie");
     }
 

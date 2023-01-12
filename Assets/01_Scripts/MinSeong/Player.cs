@@ -24,17 +24,19 @@ public class Player : MonoBehaviour
     public int damage;
     public float attackCoolTime;
 
-    public bool canDash = true;
     public bool isDashing;
-    public bool isAttacking;
     public bool canDefend;
     public bool isDefending;
     public float dashingPower;
     public float dashingTime;
     public float dashingCooldown;
     public int defendHP;
+    public int defendCooldown;
     public bool isStun;
+    float curStunTime;
     public float stunTime;
+
+    public bool mouseInput = true;
 
     public string[] attacknames;
 
@@ -44,6 +46,9 @@ public class Player : MonoBehaviour
 
     bool shouldDash;
     bool isGround;
+    bool timerOn = false;
+
+    public float curDefendTime;
 
     Rigidbody2D rb;
     void Start()
@@ -51,78 +56,142 @@ public class Player : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         ani = GetComponent<Animator>();
         attackIndex = 0;
+        curDefendTime = -1;
+        curDefendHP = defendHP;
+        originSpeed = attackCoolTime;
     }
 
     void Update()
     {
-        if (isStun)
-            return;
-        Collider2D collider2Dstop = Physics2D.OverlapBox(dashStopTransform.position, dashStopBoxSize, 0);
-
-        if (collider2Dstop.tag == "Enemy")
+        Collider2D[] collider2Dstop = Physics2D.OverlapBoxAll(dashStopTransform.position, dashStopBoxSize, 0);
+        foreach (Collider2D collider in collider2Dstop)
         {
-            shouldDash = false;
-        }
-        else
-        {
-            shouldDash = true;
+            if (collider.tag == "Enemy")
+            {
+                shouldDash = false;
+            }
+            else
+            {
+                shouldDash = true;
+            }
         }
 
 
         LookAt();
-        Attack();
+        if (!isDefending && !isStun && !defAttackStun)
+            Attack();
 
-        if (canDefend)
+        if (Input.GetMouseButtonDown(1))
+            mouseInput = true;
+        else if (Input.GetMouseButtonUp(1))
+            mouseInput = false;
+
+        if (timerOn)
         {
-            if (Input.GetMouseButtonDown(1))
+            canDefend = false;
+            curDefendTime += Time.deltaTime;
+            if (curDefendTime >= defendCooldown && mouseInput)
             {
-                ani.SetBool("BlockIdle", true);
-                isDefending = true;
-            }
-            else if (Input.GetMouseButtonUp(1))
-            {
-                curDefendHP = defendHP;
-                ani.SetBool("BlockIdle", false);
-                isDefending = false;
+                canDefend = true;
+                timerOn = false;
+                curDefendTime = 0;
             }
         }
+
+        Defend();
 
         if (shouldDash && isDashing)
         {
             transform.position += new Vector3(transform.localScale.x * dashingPower * Time.deltaTime, 0);
         }
+
+        //Debug.Log(curDefendTime);
     }
 
-    int curDefendHP;
-    IEnumerator Defend(int damage)
+    private void Defend()
     {
-        curDefendHP -= damage;
+        Debug.Log(curStunTime);
         if (curDefendHP <= 0)
         {
             isStun = true;
-            yield return new WaitForSeconds(stunTime);
+            isDefending = false;
+            ani.SetBool("BlockIdle", false);
+            curStunTime += Time.deltaTime;
+        }
+        if (curStunTime >= stunTime)
+        {
             isStun = false;
+            ani.SetBool("BlockIdle", false);
+            curStunTime = 0;
+            curDefendHP = defendHP;
+
+        }
+        if (!isStun && !defAttackStun)
+        {
+            if (mouseInput && canDefend)
+            {
+                isDefending = true;
+                ani.SetBool("BlockIdle", true);
+            }
+            else if (!mouseInput)
+            {
+                isDefending = false;
+                ani.SetBool("BlockIdle", false);
+                canDefend = true;
+                timerOn = true;
+                curDefendHP = defendHP;
+            }
+
         }
     }
+
+    public int curDefendHP;
+
 
 
 
 
     float time = 0;
 
+    float originSpeed;
+
+    void NB(GameObject target)
+    {
+        target.GetComponent<Rigidbody2D>().AddForce(new Vector2(10000 * transform.localScale.x, 10000f));
+    }
+    float attackIndexResetTime;
+
     private void Attack()
     {
         if (time <= 0)
         {
-            Debug.Log("readyforattack;");
+
             if (Input.GetMouseButtonDown(0))
             {
-                Debug.Log("공격");
+                if (attackIndex < 2)
+                    attackCoolTime = 0.2f;
+                else
+                {
+                    attackCoolTime = originSpeed;
+                }
+
                 if (!shouldDash)
                 {
-                    DefAttack();
-
+                    //DefAttack();
                     ani.SetTrigger(attacknames[attackIndex]);
+                    if (isDashing)
+                    {
+                        DefAttack();
+                        ani.SetTrigger(attacknames[attackIndex]);
+                    }
+                    if (attackIndex >= 2)
+                    {
+                        attackIndex = 0;
+                    }
+                    else
+                    {
+                        attackIndex++;
+                    }
                 }
                 else
                 {
@@ -130,21 +199,14 @@ public class Player : MonoBehaviour
                 }
 
                 time = attackCoolTime;
-                if (attackIndex >= 2)
-                {
-                    attackIndex = 0;
-                }
-                else
-                {
-                    attackIndex++;
-                }
+
             }
         }
         else
             time -= Time.deltaTime;
     }
 
-    void DefAttack()
+    public void DefAttack()
     {
         Collider2D[] collider2Ds = Physics2D.OverlapBoxAll(attackTransform.position, boxSize, 0);
         foreach (Collider2D collider in collider2Ds)
@@ -152,17 +214,22 @@ public class Player : MonoBehaviour
             if (collider.tag == "Enemy")
             {
                 collider.GetComponent<Enemy>().TakeDamage(damage);
+                if (attackIndex == 0)
+                    NB(collider.gameObject);
             }
         }
         //target에게 대미지
-        Debug.Log("rmswjq");
     }
 
     IEnumerator DashAttack()
     {
         isDashing = true;
         yield return new WaitForSeconds(dashingTime);
-        Debug.Log("dd");
+        if (!shouldDash)
+        {
+            isDashing = false;
+            StopCoroutine(DashAttack());
+        }
         isDashing = false;
     }
 
@@ -189,18 +256,23 @@ public class Player : MonoBehaviour
 
 
 
-
-
+    bool defAttackStun;
+    public void DefAttackStunFalse()
+    {
+        defAttackStun = false;
+    }
     public void TakeDamage(int damage)
     {
         if (!isDefending)
         {
-            hp -= damage;
             ani.SetTrigger("Hurt");
+            hp -= damage;
+            defAttackStun = true;
         }
         else
         {
-            Defend(damage);
+            ani.SetTrigger("Block");
+            curDefendHP -= damage;
         }
 
         if (hp <= 0)

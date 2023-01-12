@@ -63,18 +63,18 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        Collider2D[] collider2Dstop = Physics2D.OverlapBoxAll(dashStopTransform.position, dashStopBoxSize, 0);
-        foreach (Collider2D collider in collider2Dstop)
-        {
-            if (collider.tag == "Enemy")
-            {
-                shouldDash = false;
-            }
-            else
-            {
-                shouldDash = true;
-            }
-        }
+        //Collider2D[] collider2Dstop = Physics2D.OverlapBoxAll(dashStopTransform.position, dashStopBoxSize, 0);
+        //foreach (Collider2D collider in collider2Dstop)
+        //{
+        //    if (collider.tag == "Enemy")
+        //    {
+        //        shouldDash = false;
+        //    }
+        //    else
+        //    {
+        //        shouldDash = true;
+        //    }
+        //}
 
 
         LookAt();
@@ -163,7 +163,7 @@ public class Player : MonoBehaviour
 
     private void Attack()
     {
-        if (time <= 0)
+        if (time >= attackCoolTime)
         {
 
             if (Input.GetMouseButtonDown(0))
@@ -175,35 +175,23 @@ public class Player : MonoBehaviour
                     attackCoolTime = originSpeed;
                 }
 
-                if (!shouldDash)
+                if (!shouldDash && !isDashing)
                 {
-                    //DefAttack();
-                    ani.SetTrigger(attacknames[attackIndex]);
-                    if (isDashing)
-                    {
                         DefAttack();
-                        ani.SetTrigger(attacknames[attackIndex]);
-                    }
-                    if (attackIndex >= 2)
-                    {
-                        attackIndex = 0;
-                    }
-                    else
-                    {
-                        attackIndex++;
-                    }
+                    ani.SetTrigger(attacknames[attackIndex]);
+                    //if (isDashing){DefAttack(); ani.SetTrigger(attacknames[attackIndex]); }
                 }
-                else
+                else if(shouldDash && !isDashing)
                 {
                     StartCoroutine(DashAttack());
                 }
 
-                time = attackCoolTime;
+                time = 0;
 
             }
         }
         else
-            time -= Time.deltaTime;
+            time += Time.deltaTime;
     }
 
     public void DefAttack()
@@ -214,6 +202,14 @@ public class Player : MonoBehaviour
             if (collider.tag == "Enemy")
             {
                 collider.GetComponent<Enemy>().TakeDamage(damage);
+                if (attackIndex >= 2)
+                {
+                    attackIndex = 0;
+                }
+                else
+                {
+                    attackIndex++;
+                }
                 if (attackIndex == 0)
                     NB(collider.gameObject);
             }
@@ -225,11 +221,7 @@ public class Player : MonoBehaviour
     {
         isDashing = true;
         yield return new WaitForSeconds(dashingTime);
-        if (!shouldDash)
-        {
-            isDashing = false;
-            StopCoroutine(DashAttack());
-        }
+
         isDashing = false;
     }
 
@@ -289,6 +281,13 @@ public class Player : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-
+        if (collision.gameObject.CompareTag("Enemy"))
+        {
+            shouldDash = false;
+        }
+        else
+        {
+            shouldDash = true;
+        }
     }
 }

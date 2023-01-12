@@ -14,8 +14,8 @@ public class GameUIManager : MonoBehaviour
     {
         maxHp = FindObjectOfType<Player>().hp;
         curHp = maxHp;
-        leftSlider.value = curHp / maxHp;
-        rightSlider.value = curHp / maxHp;
+            leftSlider.value = curHp / maxHp;
+            rightSlider.value = curHp / maxHp;
     }
     void Update()
     {

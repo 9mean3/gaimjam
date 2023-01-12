@@ -85,10 +85,6 @@ public class Enemy : MonoBehaviour
             Attack();
         Defend();
 
-        if (Input.GetMouseButtonDown(1))
-            mouseInput = true;
-        else if (Input.GetMouseButtonUp(1))
-            mouseInput = false;
 
         if (timerOn)
         {
